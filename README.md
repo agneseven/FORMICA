@@ -11,7 +11,7 @@ g++ -g main.cpp Grafo.cpp mobility.cpp Coordinates.cpp RandomWalk.cpp mobileNode
 
 ### 3. Run 
 ```
-./test <NODE_NUM> <PATH_TO_NODE_COORDINATES_TEXT_FILE> <PATH_TO_NODE_IDS_TEXT_FILE> <PATH_TO_NODE_BANDWIDTH_TEXT_FILE> <PATH_TO_NODE_DELAY_TEXT_FILE> <SIM_TIME> <MOBILE_NUM> <MODE_TS> <MODETD> <SERVICE_TIME> <GENERATION_TIME> <OFFLOADING_MODE> <SPEED_MOBILE_NODE> <SEED> <MIGRATION_MODE> <FAILURE_MODE> <PERC_FAILED_NODES> <THRESHOLD_MODE> <GENERATION_TRAFFIC_MODE>
+./test <NODE_NUM> <PATH_TO_NODE_COORDINATES_TEXT_FILE> <PATH_TO_NODE_IDS_TEXT_FILE> <PATH_TO_NODE_BANDWIDTH_TEXT_FILE> <PATH_TO_NODE_DELAY_TEXT_FILE> <SIM_TIME> <MOBILE_NUM> <MODE_TS> <MODE_TD> <SERVICE_TIME> <GENERATION_TIME> <OFFLOADING_MODE> <SPEED_MOBILE_NODE> <SEED> <MIGRATION_MODE> <FAILURE_MODE> <PERC_FAILED_NODES> <THRESHOLD_MODE> <GENERATION_TRAFFIC_MODE>
 ```
 where:
 
@@ -29,13 +29,13 @@ where:
 
 **\<MOBILE_NUM\>** : number of mobile device that generate tasks
 
-**\<MODE_TS\>** :  
+**\<MODE_TS: _uniform_ | _variable_ | _constant_\>** :  the average service time value is assigned to each node according to three distributions: uniform, exponential, constant (all nodes have the same average service time) 
 
-**\<MODE_TD\>** : 
+**\<MODE_TD: _uniform_ | _variable_ | _constant_\>** : the average generation time value is assigned to each node according to three distributions: uniform, exponential, constant (all nodes have the same average generation time) 
 
-**\<SERVICE_TIME\>** : 
+**\<SERVICE_TIME\>** : if <MODE_TS> == uniform -> <SERVICE_TIME> is the upper boundary of the interval \[0, <SERVICE_TIME>); if <MODE_TS> == variable -> <SERVICE_TIME> is the lambda distribution parameter (rate of events); if <MODE_TS> == constant -> <SERVICE_TIME> is the average service time value assigned to all nodes
 
-**\<GENERATION_TIME\>** :
+**\<GENERATION_TIME\>** : if <MODE_TS> == uniform -> <GENERATION_TIME> is the upper boundary of the interval \[0, <GENERATION_TIME>); if <MODE_TS> == variable -> <GENERATION_TIME> is the lambda distribution parameter (rate of events); if <MODE_TS> == constant -> <GENERATION_TIME> is the average service time value assigned to all nodes
 
 **\<OFFLOADING_MODE: _uniform_ | _variable_ | _kserver_\>** : uniform -> the vertex where tasks migrate is uniformly chosen among the active node; variable -> the vertex where tasks migrate is chosen among the more powerful active nodes (lower service time); kserver -> the vertex where tasks migrate is chosen according  to harmonic policy
 
