@@ -16,4 +16,28 @@ g++ -g main.cpp Grafo.cpp mobility.cpp Coordinates.cpp RandomWalk.cpp mobileNode
 where:
 
 **\<NODE_NUM\>** : number of nodes in the topology
+**\<PATH_TO_NODE_COORDINATES_TEXT_FILE\>** : path to the text file generated with BRITE containing the geographical coordinates of the topology nodes
+**\<PATH_TO_NODE_IDS_TEXT_FILE\>** : path to the text file generated with BRITE containing how nodes are connected
+**\<PATH_TO_NODE_BANDWIDTH_TEXT_FILE\>** : path to the text file generated with BRITE containing the bandwitdh of each link
+**\<PATH_TO_NODE_DELAY_TEXT_FILE\>** : path to the text file generated with BRITE containing the delay of eack link
+**\<SIM_TIME\>** : maximum duration of the simulation
+**\<MOBILE_NUM\>** : number of mobile device that generate tasks
+**\<MODE_TS\>** :  
+**\<MODETD\>** : 
+**\<SERVICE_TIME\>** : 
+**\<GENERATION_TIME\>** : 
+**\<OFFLOADING_MODE\>** :      // modeOffloading == uniform -> the vertex where tasks migrate is uniformly chosen among the active nodes
+    // modeOffloading == variable -> the vertex where tasks migrate is chosen among the more powerful active nodes (lower service time)
+    // modeOffloading == kserver -> the vertex where tasks migrate is chosen according  to kserver policy
+**\<SPEED_MOBILE_NODE\>** : 
+**\<SEED\>** : 
+**\<MIGRATION_MODE\>** : 
+**\<FAILURE_MODE\>** : 
+**\<PERC_FAILED_NODES\>** : 
+
+
+**\<MODE : _PUSH_ | _PULL_\>** : publish-subscribe approach
+
+**\<THRESHOLD_MODE\>** : 
+**\<GENERATION_TRAFFIC_MODE\>** : 
 
