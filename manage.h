@@ -52,8 +52,8 @@ public:
     // modeOffloading == variable -> the vertex where tasks migrate is chosen among the more powerful active nodes (lower service time)
     // modeOffloading == kserver -> the vertex where tasks migrate is chosen according  to kserver policy
     char* modeOffloading;
-    //THRESHOLD = 0 -> tasks migrate when the threshold is overcome
-    //THRESHOLD = 1 -> tasks never migrate
+    //THRESHOLD = 0 -> tasks never migrate
+    //THRESHOLD = 1 -> tasks migrate when the threshold is overcome
     bool THRESHOLD;
     //generationMode = uniform -> mobile nodes generate traffic according to a uniform distribution
     //generationMode = exponential -> mobile nodes generate traffic according to an exponential distribution
@@ -119,6 +119,9 @@ public:
     double migrationCostUniformON(int nvertici, std::vector<double> serviceTime, int x, int i, double timeelab);
     
     double migrationCostUniformOFF(int nvertici, std::vector<double> serviceTime, int x, int i, double timeelab);
+    
+    void check_statusDAM(); //New function that implements DAM protocol
+
 
 };
 
