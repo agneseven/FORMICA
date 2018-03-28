@@ -31,25 +31,32 @@ Grafo* Topology;
 
 int main(int argc, char** argv) {
 
-
-    if (argc != 19) {
+    if (argc != 20) {
         std::cout << "Error: wrong number of parameters" << std::endl;
         exit(1);
     }
-    int nvertici = atoi(argv[1]); //total number of vertices
+    
+    int nvertici = atoi(argv[1]); //total number of nodes in the topology
+    
     Topology = new Grafo[nvertici];
-
 
     manage(m);
 
     m.initialize_graph(argc, argv);
 
     int option = m.initialize_process(argc, argv);
+    
     bool EndOfSimulation;
     int completedTask = 0;
+    bool FAILED = false;
+    
     do{
         completedTask = m.clock_process(option, argc, argv);
-    }while(completedTask < 500);
+        //FAILED = m.clock_process(option, argc, argv);
+
+
+    }while(completedTask < 500); //the simulation ends when 500 task are processed
+    //}while(FAILED != true);
     //while(EndOfSimulation == false);
 
     m.statistics();

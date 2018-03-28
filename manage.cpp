@@ -19,32 +19,72 @@
 #include <algorithm>
 
 
+
 #define PI (3.141592653589793)
-#define ELABORATION_TIME 0 //s
 #define SPEED_OF_LIGHT  299792458.0 // m/s
 
 
 extern Grafo* Topology;
 igraph_t g1;
-std::vector<double> totLifeTaskTime;
-std::vector<int> jobIDLifeTaskTime;
-int totGeneratedEvent;
-int totcompletedTask;
-int migration;
-int NOmigration;
-int NOconnection;
-int lostTask;
-int failedVertex;
-//int Freq_n[10];
-int sogliasuperata;
-std::vector<int> vecThreshold;
-std::default_random_engine generator;
+std::vector<double> totLifeTaskTime; //vector of the lifetime of each completed task
+std::vector<int> jobIDLifeTaskTime; //vector of the  id of each completed task
+int totGeneratedEvent; //total number of event generated during the simulation
+int totcompletedTask; // variable updated with the number of completed tasks
+int migration; // variable updated with the number of migrated tasks
+int NOmigration; // variable updated with the number of tasks that don't migrate
+int lostTask; // variable updated with the number of lost tasks because the node that was hosting them failed and it wasn't connected to any other node
+int failedVertex; // variable updated with the number of failed vertex
+int overcomedThreshold; //number of times the threshold has been overcomed
+std::vector<int> vecThreshold; //vector with the value of all the evaluated threshold
+
+std::default_random_engine generator(time(NULL));
 
 
 
+//==============================================================================
+//= Function to generate exponential / uniform / heavy tail distribution
+//==============================================================================
+double exponential(double x)
+{
+    double z; // Uniform random number from 0 to 1
+    
+    
+    // Pull a uniform RV (0 < z < 1)
+    do
+    {
+        z = ((double) rand() / RAND_MAX);
+    }
+    while ((z == 0) || (z == 1));
+    
+    return(-x * log(z));
+}
+
+double uniformDistr(double x)
+{
+    std::default_random_engine generator;
+    std::uniform_real_distribution<double> distribution(0.0,x);
+    
+    double number = distribution(generator);
+    
+    
+    return(number);
+}
+
+double htDistr(double x)
+{
+    std::default_random_engine generator;
+    std::weibull_distribution<double> distribution(0.5,x);
+    
+    double number = distribution(generator);
+    
+    return(number);
+}
 
 
 
+//===========================================================================
+//= Function to generate random coordinates / random vertex id
+//===========================================================================
 double Coord_rand(double Border){
     double range = (Border - 0);
     double div = RAND_MAX / range;
@@ -60,16 +100,15 @@ int manage::randId(int nvertici){
 
 }
 
-
+//===========================================================================
+//= Function to generate the ID of the most powerful nodes
+//===========================================================================
 int preferentialIDgen(int i, int nvertici, std::vector<double> serviceTime){
     std::vector<double> listProb;
     double sumlistMigrationCost = 0;
     int n;
-
-
     for (int id = 0; id < nvertici; id++) {
         if (Topology[id].getState() == 1 && id != i && Topology[i].getNeighbours(id) == 1) {
-            //std::cout << "id ok " << id << std::endl;
             sumlistMigrationCost = sumlistMigrationCost + (1 / serviceTime[id]);
         }
     }
@@ -77,27 +116,19 @@ int preferentialIDgen(int i, int nvertici, std::vector<double> serviceTime){
     for (int id = 0; id < nvertici; id++) {
         if (Topology[id].getState() == 1 && id != i && Topology[i].getNeighbours(id) == 1) {
             listProb.push_back((1 / serviceTime[id]) / sumlistMigrationCost);
-            // std::cout << "probailita node " << id << ": " << listProb[id]<< std::endl;
         } else if (Topology[id].getState() == 0 || id == i || Topology[i].getNeighbours(id) == 0) {
             listProb.push_back(0);
-            //std::cout << "probailita node " << id << ": " << listProb[id]<< std::endl;
         }
     }
 
     double val = (double) rand() / RAND_MAX;
     double cumulativeProbability = 0;
-    //                            std::cout << "val " << val <<  std::endl;
 
     for (int id = 0; id < nvertici; id++) {
         if (Topology[id].getState() == 1 && Topology[i].getNeighbours(id) == 1) {
-            //std::cout << "id " << id <<  std::endl;
-
             cumulativeProbability = cumulativeProbability + listProb[id];
-            //std::cout << "cumulativeProbability " << cumulativeProbability << " val " << val <<  std::endl;
-
             if (val < cumulativeProbability && id != i) {
                 n = id;
-                //std::cout << "nodo ud " << id <<  std::endl;
                 break;
             }
         }
@@ -107,6 +138,9 @@ int preferentialIDgen(int i, int nvertici, std::vector<double> serviceTime){
 
 }
 
+//===========================================================================
+//= Function to generate the ID of the most powerful nodes
+//===========================================================================
 int powerfulIDgen(int nvertici, std::vector<double> serviceTime){
     std::vector<double> listProb;
     double sumlistMigrationCost = 0;
@@ -119,7 +153,6 @@ int powerfulIDgen(int nvertici, std::vector<double> serviceTime){
     for (int id = 0; id < nvertici; id++) {
         if(Topology[id].getState() == 1){
             listProb.push_back((1/serviceTime[id])/sumlistMigrationCost);
-            // std::cout << "probailita node " << i << ": " << listProb[i]<< std::endl;
         }
         else if(Topology[id].getState() == 0){
             listProb.push_back(0);
@@ -129,19 +162,13 @@ int powerfulIDgen(int nvertici, std::vector<double> serviceTime){
     int n;
     double val = (double)rand() / RAND_MAX;
     double cumulativeProbability = 0;
-    //                            std::cout << "val " << val <<  std::endl;
 
     for (int id = 0; id < nvertici; id++) {
         if(Topology[id].getState() == 1 ){
-            //std::cout << "id " << id <<  std::endl;
-
             cumulativeProbability =  cumulativeProbability + listProb[id];
-            //std::cout << "cumulativeProbability " << cumulativeProbability << " val " << val <<  std::endl;
 
             if (val < cumulativeProbability) {
                 n = id;
-                //std::cout << "nodo ud " << id <<  std::endl;
-
                 break;
             }
         }
@@ -150,6 +177,9 @@ int powerfulIDgen(int nvertici, std::vector<double> serviceTime){
 
 }
 
+//===========================================================================
+//= Function to generate the ID according to the harmonic policy
+//===========================================================================
 int manage::kserverIDgen(int currentID, int nvertici, std::vector<double> serviceTime, double timeelab){
     std::vector<double> listMigrationCost;
     double sumlistMigrationCost = 0;
@@ -158,11 +188,8 @@ int manage::kserverIDgen(int currentID, int nvertici, std::vector<double> servic
         if (Topology[id].getState() == 1 && id != currentID && Topology[currentID].getNeighbours(id) == 1) {
             double transmissionCost_new = delayCalculation(currentID, id);
             double queueCost_new = serviceTime[id] * (Topology[id].getSizeQueue());
-            //std::cout << "Topology[id].getSizeQueue()-1 " << Topology[id].getSizeQueue()<< std::endl;
-            //double lastTaskCost_new = serviceTime[n] - CurrentTime;
             double elaborationTime_new = timeelab;
             listMigrationCost.push_back(transmissionCost_new + queueCost_new  + elaborationTime_new);
-            // std::cout << "MigrationCost " << id << ": " <<  listMigrationCost[id]<< std::endl;
 
             sumlistMigrationCost = sumlistMigrationCost + (1/listMigrationCost[id]);
         }
@@ -177,7 +204,6 @@ int manage::kserverIDgen(int currentID, int nvertici, std::vector<double> servic
     for (int id = 0; id < nvertici; id++) {
         if (Topology[id].getState() == 1 && id != currentID && Topology[currentID].getNeighbours(id) == 1) {
             listProb.push_back((1/listMigrationCost[id])/sumlistMigrationCost);
-            // std::cout << "probailita node " << id << ": " << listProb[id]<< std::endl;
         }
         else if (Topology[id].getState() == 0 || id == currentID || Topology[currentID].getNeighbours(id) == 0) {
             listProb.push_back(0);
@@ -187,19 +213,15 @@ int manage::kserverIDgen(int currentID, int nvertici, std::vector<double> servic
 
     double val = (double)rand() / RAND_MAX;
     double cumulativeProbability = 0;
-    //std::cout << "val " << val <<  std::endl;
 
     int n;
-
-
 
     for (int id = 0; id < nvertici; id++) {
         if (Topology[id].getState() == 1 && Topology[currentID].getNeighbours(id) == 1) {
             cumulativeProbability = cumulativeProbability + listProb[id];
-            //std::cout << "cumulativeProbability " << cumulativeProbability << " val " << val <<  std::endl;
+
             if (val < cumulativeProbability && id != currentID) {
                 n = id;
-                //std::cout << "nodo ud " << id <<  std::endl;
                 break;
             }
         }
@@ -212,104 +234,56 @@ int manage::kserverIDgen(int currentID, int nvertici, std::vector<double> servic
 
 
 
-
-//================================================== =======================
-//= Multiplicative LCG for generating uniform(0.0, 1.0) random numbers =
-//= - x_n = 7^5*x_(n-1)mod(2^31 - 1) =
-//= - With x seeded to 1 the 10000th x value should be 1043618065 =
-//= - From R. Jain, "The Art of Computer Systems Performance Analysis," =
-//= John Wiley & Sons, 1991. (Page 443, Figure 26.2) =
-//= - Seed the RNG if seed > 0, return a unif(0,1) if seed == 0 =
-//================================================== =======================
-
-
-//================================================== ============================
-//= Function to generate exponentially distributed RVs using inverse method =
-//= - Input: x (mean value of distribution) =
-//= - Output: Returns with exponential RV =
-//================================================== ============================
-double exponential(double x)
-{
-    double z; // Uniform random number from 0 to 1
-
-
-    // Pull a uniform RV (0 < z < 1)
-    do
-    {
-        z = ((double) rand() / RAND_MAX);
-    }
-    while ((z == 0) || (z == 1));
-
-    return(-x * log(z));
+manage::manage(){
 }
-
-
-
-manage::manage(){//(int idn) {//, double x, double y){
-
-}
-
 
 manage::~manage(){
 }
 
 
 
-
+//===========================================================================
+//= Function to initialize the process parameters
+//===========================================================================
 int manage::initialize_process(int argc, char** argv) {
-    //tn = 0;
-    //s = 0;
-    totGeneratedEvent = 0;
-    failedVertex = 0;
-//    for (int a=0; a < nvertici; a++){
-//        Freq_n[a] = 0;
-//    }
 
-    migration = 0;
-    lostTask = 0;
-
-    NOmigration = 0;
-    NOconnection = 0;
-
-    simulationTime = atof(argv[6]); //1000;
-    busyTime = 0;
-    totcompletedTask = 0;
-    EndOfSimulation = false;
     Event *ev;
-
-    sogliasuperata = 0;
-
-    istanteCheck = 0.0;
-
-
-    numMob = atoi(argv[7]);
-    coord_mobile_nodes = new Coordinates;
-
-    mobile_nodes = new mobileNode[numMob];
-    double tGen = 0;
-    for(int i = 0; i < numMob; i++){
-        //std::cout << "nodo mobile " <<  i << " genera un task " << std::endl;
-        tGen =  (double)(rand()%2) + (double)rand() / (double)RAND_MAX;
-
-        //std::cout << "tGen " <<  tGen <<  std::endl;
-        ev = new Event(GENERATION, tGen, i, 0, 0); // at the instant 0 a new event arrival happensù
-        Lista.addEvent(ev); //add to the list of event this one
-
-        //totGeneratedEvent++;
-
-    }
-
-    //---------------------------------------------------------
     char* modeTs;
     char* modeTd;
+    
+    totGeneratedEvent = 0;
+    failedVertex = 0;
+    migration = 0;
+    lostTask = 0;
+    NOmigration = 0;
+    totcompletedTask = 0;
+    EndOfSimulation = false;
+    overcomedThreshold = 0;
+    CurrentTime = 0.0;
 
-    modeTs = argv[8];
-    modeTd = argv[9];
+    double Border1 = 1000.0; //dimension of the plane
+    
 
-    const std::string uniformMode = "uniform";
-    const std::string exponentialMode = "exponential";
-    const std::string constantMode = "constant";
+
+    //----------------------------------------------------------------------------
+    
     int option;
+
+    simulationTime = atof(argv[6]); //total duration of the simulation
+    numMob = atoi(argv[7]); //number of mobile devices that generate packets
+    modeTs = argv[8]; //distribution of the service time of the node of the topology
+    modeTd = argv[9]; //distribution of the generation time of the mobile nodes
+    int speed = atoi(argv[13]); // mobile node's speed
+    int seed = atoi(argv[14]); //seed
+    int migrationMode = atoi(argv[15]); //migration cost on/off
+    int failureMode = atoi(argv[16]); //failure on/off
+    int failedPerc = atoi(argv[17]); //percentage of nodes that we want to fail
+    int THRESHOLDMode = atoi(argv[18]); //threshold on/off
+
+    const std::string uniformMode = "uniform"; // uniform distribution
+    const std::string exponentialMode = "exponential"; // exponential distribution
+    const std::string constantMode = "constant"; // constant distribution
+    
     if(modeTs == uniformMode && modeTd == uniformMode){
         option = 0;
     }
@@ -445,43 +419,6 @@ int manage::initialize_process(int argc, char** argv) {
     }
 
 
-    //---------------------------------------------------------
-    //adjacency matrix//——————————————————————
-    igraph_bool_t connected;
-    igraph_matrix_t m;
-    igraph_matrix_init(&m, nvertici, nvertici);
-
-//    for(int a = 0; a < nvertici; a ++){
-//        for(int b = 0; b < nvertici; b ++){
-//            igraph_are_connected(&g1, a, b, &connected);
-//            MATRIX(m,a,b) = connected;
-//        }
-//    }
-    //igraph_matrix_print(&m); //print matrix
-    double Border1 = 1000.0;//10;//10000.0;//7071.0; //m  1000; //m //Km
-
-
-    CurrentTime = 0.0;
-    //std::cout << "aggiorno pos 1 " << std::endl;
-
-    //adding mobile nodes to the topology
-    int speed = atoi(argv[13]); // producer speed
-    int seed = atoi(argv[14]); //
-    srand(seed);
-    for(int i = 0; i < numMob; i++){
-        mobile_nodes[i].SetSpeed(speed);
-        mobile_nodes[i].SetSpeedDirection((double)(rand() %360) * ((2*PI)/360));
-        coord_mobile_nodes->SetCoordinates(Coord_rand(Border1), Coord_rand(Border1));
-        mobile_nodes[i].SetPosition(coord_mobile_nodes);
-        mobile_nodes[i].initcountMig();
-
-    }
-    //std::cout << "aggiorno pos 2 " << std::endl;
-
-    int migrationMode = atoi(argv[15]);
-    int failureMode = atoi(argv[16]);
-    //int kserverMode = atoi(argv[18]);
-    int THRESHOLDMode = atoi(argv[18]);
 
     if(THRESHOLDMode == 0) {
         THRESHOLD = 0;
@@ -490,13 +427,6 @@ int manage::initialize_process(int argc, char** argv) {
         THRESHOLD = 1;
     }
 
-
-
-    //    char* migrationMode;
-    //    migrationMode = argv[15];
-    //    const std::string migrationModeON = "on";
-    //    const std::string migrationModeOFF = "off";
-    //
     if(migrationMode == 0) {
         migrationMODE = 0;
     }
@@ -504,12 +434,6 @@ int manage::initialize_process(int argc, char** argv) {
         migrationMODE = 1;
     }
 
-    //    char* failureMode;
-    //    failureMode = argv[16];
-    //
-    //    const std::string failureModeON = "on";
-    //    const std::string failureModeOFF = "off";
-    //
     if(failureMode == 0) {
         failureMODE = 0;
     }
@@ -517,59 +441,73 @@ int manage::initialize_process(int argc, char** argv) {
         failureMODE = 1;
     }
 
-//    if(kserverMode == 0) {
-//        kserverMODE = 0;
-//    }
-//    else if(kserverMode == 1){
-//        kserverMODE = 1;
-//    }
 
-    int failedPerc = atoi(argv[17]);
     nodeFail = nvertici*failedPerc/100;
-    std::cout << "devono cadere " <<nodeFail << std::endl;
+    std::cout << "the number of nodes that will fall is: " <<nodeFail << std::endl;
     dec = 1;
+    
+    //adding mobile nodes to the topology
+    coord_mobile_nodes = new Coordinates;
+    mobile_nodes = new mobileNode[numMob];
+    srand(time(NULL));
+    for(int i = 0; i < numMob; i++){
+        mobile_nodes[i].SetSpeed(speed);
+        mobile_nodes[i].SetSpeedDirection((double)(rand() %360) * ((2*PI)/360));
+        coord_mobile_nodes->SetCoordinates(Coord_rand(Border1), Coord_rand(Border1));
+        mobile_nodes[i].SetPosition(coord_mobile_nodes);
+        mobile_nodes[i].initcountMig();
+    }
+    
+    //each mobile device generates a task
+    //but they don't generate the first tasks at the same time
+    double tGen = 0;
+    for(int i = 0; i < numMob; i++){
+        tGen =  (double)(rand()%2) + (double)rand() / (double)RAND_MAX;// time the mobile node will generate its first task
+        ev = new Event(GENERATION, tGen, i, 0, 0); // the function generate() will generate the task of the mobile node i at the time tGen
+        Lista.addEvent(ev); //the event 'generation' is added to the list of events
+    }
+    
 
-//    ev = new Event(FAILURE,2, 0, 0); //10, 0, 0); //event that define the end of the simulation
-//    Lista.addEvent(ev);
-
-    ev = new Event(CHECK, 0, 0, 0, 0); //event that define the end of the simulation
-    Lista.addEvent(ev);
+    ev = new Event(CHECK, 0, 0, 0, 0); //event that evaluate the threshold and check if the threshold has been overcome
+    Lista.addEvent(ev); //this event is added to the list of events
+    std::uniform_real_distribution<> distributionTime(0, 5);
+    double firstFailTime = distributionTime(generator);
+    
+    ev = new Event(FAILURE, firstFailTime, 0, 0, 0); //first time a node will fail
+    Lista.addEvent(ev);//this event is added to the list of events
+    
+    ev = new Event(SIM_END, simulationTime, 0, 0, 0); //event that define the end of the simulation at the time simulationTime (the simulation could end before according to what we want)
+    Lista.addEvent(ev);//this event is added to the list of events
 
     return option;
 }
 
-
-
+//===========================================================================
+//= Function to initialize graph parameters
+//===========================================================================
 int manage::initialize_graph(int argc, char** argv){
-
-
+    
+    double id_node[nvertici],x_pos[nvertici], y_pos[nvertici];
     nvertici = atoi(argv[1]); //total number of vertices
+    
     for(int i = 0; i< nvertici; i++) {
         for(int j = 0; j < nvertici; j++){
             Topology[i].initNeighbours();
         }
     }
-
+    //array with the nodes still active
     for (int i = 0; i< nvertici; i++){
         arrayNvertici.push_back(i);
     }
-    //    for (int i = 0; i< arrayNvertici.size(); i++){
-    //        std::cout  << "indice : " << arrayNvertici[i] << std::endl;
-    //    }
-
-    double id_node[nvertici],x_pos[nvertici], y_pos[nvertici];
-
-    //std::cout << "a" << std::endl;
 
     //node topology coordinates from file-----------------------------
     std::ifstream file_coord;
     file_coord.open(argv[2]);
-    if (!file_coord)                  //test to see if file is open
+    if (!file_coord)//test to see if file is open
     {
-        std::cout << "Error opening file coordinates" << std::endl;
+        std::cout << "Error opening coordinates file" << std::endl;
         return -1;
     }
-
     else
     {
         for (int i = 0 ; i<nvertici; i ++){
@@ -579,50 +517,32 @@ int manage::initialize_graph(int argc, char** argv){
     }
 
     file_coord.close();
-    //std::cout << "b" << std::endl;
 
 
     //geographic topology creation ------------------------------------------------
-
     Grafo Topology2;
     for (int i = 0; i<nvertici; i++){
         Topology[i].SetX(x_pos[i]); //m
         Topology[i].SetY(y_pos[i]);
     }
 
-
-
-    //std::cout << Topology[0].GetXid() << " " << Topology[0].GetYid() << std::endl;
-    //std::cout << "b1" << std::endl;
-
     //edges from file-----------------------------
     FILE *file_edge = fopen(argv[3], "r" );
-    if ( !file_edge )
-        return 1;
+    if ( !file_edge )    {  //test to see if file is open
+        std::cout << "Error opening edge file" << std::endl;
+        return -1;
+    }
     else igraph_read_graph_edgelist(&g1, file_edge,
-                                    nvertici, 0); //directed graph
+                                    nvertici, 0); //undirected graph
     fclose(file_edge);
 
-    //    igraph_vector_t vertices;
-    //    igraph_vector_init(&vertices, 0);
-    //    igraph_vector_t edges;
-    //    igraph_vector_init(&edges, 0);
-    //    igraph_get_shortest_path(&g1,&vertices,&edges,0,10,IGRAPH_ALL);
 
-    //std::cout << "c" << std::endl;
-
-
-    //int nedges = 27;//atoi(argv[7]); //total number of edges
-
-
-    //weights from file-----------------------------
-    //double vec_band[nedges];
-
+    //bandwidth from file-----------------------------
     std::ifstream file_band;
     file_band.open(argv[4]);
     if (!file_band)                  //test to see if file is open
     {
-        std::cout << "Error opening file bandwidth" << std::endl;
+        std::cout << "Error opening bandwidth file" << std::endl;
         return -1;
     }
 
@@ -631,37 +551,20 @@ int manage::initialize_graph(int argc, char** argv){
         double temp;
         while(file_band >> temp)
         {
-
             vec_band.push_back(temp);
         }
-        //        for (int i = 0 ; i<nedges; i ++){
-        //            file_band >> vec_band[i];
-        //            std::cout << vec_band[i] << std::endl;
-        //        }
-
     }
 
     file_band.close();
-    //std::cout << "d" << std::endl;
-    nedges = vec_band.size();
-    //std::cout << "n edges " << nedges << std::endl;
-
-    //    for (int i = 0 ; i<nedges; i ++){
-    //        std::cout << vec_band[i] << std::endl;
-    //    }
-
-
-    //std::cout << "dd" << std::endl;
-
-
-
+    
+    nedges = vec_band.size(); //number of edge in the topology
 
     //delays from file-----------------------------
     std::ifstream file_delays;
     file_delays.open(argv[5]);
     if (!file_delays)                  //test to see if file is open
     {
-        std::cout << "Error opening file delays" << std::endl;
+        std::cout << "Error opening delays file" << std::endl;
         return -1;
     }
 
@@ -672,10 +575,6 @@ int manage::initialize_graph(int argc, char** argv){
         {
             vec_delays.push_back(temp);
         }
-        //        for (int i = 0 ; i<nedges; i ++){
-        //            file_delays >> vec_delays[i];
-        //            std::cout << vec_delays[i] << std::endl;
-        //        }
     }
 
     file_delays.close();
@@ -684,13 +583,13 @@ int manage::initialize_graph(int argc, char** argv){
 }
 
 
-
+//===========================================================================
+//= Function to update the position of the mobile nodes
+//===========================================================================
 void manage::update_node_position(){
 
     for(int i = 0; i < numMob; i++) {
-        //std::cout << "nodo mobile " << i << std::endl;
         mobile_nodes[i].UpdatePosition(CurrentTime);
-        //std::cout << "update position nodo mobile " << i << std::endl;
         Coordinates *coord_mobile_nodes2;
         coord_mobile_nodes2 = mobile_nodes[i].GetPosition();
         //std::cout << "coord " <<coord_mobile_nodes2->GetCoordinateX() << " " <<  coord_mobile_nodes2->GetCoordinateY() << std::endl;
@@ -698,7 +597,9 @@ void manage::update_node_position(){
 }
 
 
-
+//===========================================================================
+//= Function to evaluate the delay from node i to node n
+//===========================================================================
 double manage::delayCalculation(int i, int n ){
     double timeMovedtask = 0.0;
 
@@ -706,139 +607,106 @@ double manage::delayCalculation(int i, int n ){
     igraph_bool_t connected;
     igraph_vs_t from;
     igraph_vs_t to;
+    std::vector<igraph_real_t> weights_delay; //vector of the delay of all the links of the topology
+    igraph_vector_t vertices1;
+    igraph_vector_t edges1;
+    igraph_vector_init(&vertices1, 0);
+    igraph_vector_init(&edges1, 0);
+    
     from = igraph_vss_1(i);
     to = igraph_vss_1(n);
-    //igraph_are_connected(&g1, s, nodeIndex, &res);
+
     igraph_matrix_init(&res, 0, 0);
     igraph_matrix_print(&res);
     igraph_is_connected(&g1, &connected, IGRAPH_STRONG);
-    //    std::cout << "grafo connesso : " << connected << std::endl;
     igraph_shortest_paths(&g1, &res, from, to, IGRAPH_ALL);
-    //    std::cout << "distanza : " << MATRIX(res,0,0) << " from " << i << " to " << n << std::endl;
-    //    igraph_matrix_print(&res);
-    //if(MATRIX(res,0,0) == INFINITY){std::cout << "nodi non connessi inf a: " << std::endl; }
-    if(MATRIX(res,0,0) == INFINITY ){ // || MATRIX(res,0,0) == IGRAPH_INFINITY){//} IGRAPH_INFINITY) {
-        //        std::cout << "nodi non connessi: " << std::endl;
+
+    if(MATRIX(res,0,0) == INFINITY ){
+        //        std::cout << "the two nodes i and n are not connected " << std::endl;
         timeMovedtask = 10000;
     }
     if(MATRIX(res,0,0) > 0.5 && MATRIX(res,0,0) != INFINITY) {
-        //        std::cout << "nodi connessi, posso migrare: " << MATRIX(res,0,0) << std::endl;
+        //        std::cout << " the two nodes i and n are connected, then tasks can migrate " << std::endl;
 
-
-        std::vector<igraph_real_t> weights_delay;//[nedges];
-
+        //vector of the delay of all the links of the topolog
         for (int i = 0; i < nedges; i++) {
             weights_delay.push_back(vec_delays[i] * 100);
         }
-        //        std::cout << " deletedEdges size " << deletedEdges.size()  << std::endl;
-
+        // delete from the vector weights_delay the delay of the link that don't belong anymore to the topology because nodes connected to those edges failed
         for(int j = 0; j < deletedEdges.size(); j ++ ) {
             weights_delay.erase(weights_delay.begin() + deletedEdges[j]);
-            //            std::cout << " ho cancellato " << deletedEdges[j] << " " << weights_delay[j] << std::endl;
         }
-        //        std::cout << " weights_delay.size " << weights_delay.size()  << std::endl;
         igraph_real_t weights_delay2[weights_delay.size()];
-
 
         for (int i = 0; i < weights_delay.size(); i++) {
             weights_delay2[i] = weights_delay[i];
-            //            std::cout << " delay " << weights_delay2[i] << std::endl;
 
         }
-
-        igraph_vector_t vertices1;
-        igraph_vector_t edges1;
-        igraph_vector_init(&vertices1, 0);
-        igraph_vector_init(&edges1, 0);
 
         igraph_vector_view(&weights, weights_delay2, sizeof(weights_delay2) / sizeof(igraph_real_t));
-        //        std::cout << " igraph_vector_size(&weights) " << igraph_vector_size(&weights) << std::endl;
-        //
-        //        std::cout << "numero edge a " << igraph_ecount(&g1) << std::endl;
 
+        //evaluation of the shortest path between i and n
         igraph_get_shortest_path_dijkstra(&g1, &vertices1, &edges1, i, n, &weights, IGRAPH_ALL);
-        //        std::cout << "calcolo i " << i << " n " << n << std::endl; // <<" size " << igraph_vector_size(&vertices1) << "\t" <<   VECTOR(vertices1)[0] <<  "\t" << VECTOR(vertices1)[1] << "\t" << VECTOR(vertices1)[2] <<std::endl;
 
-        for (int b = 0; b < igraph_vector_size(&edges1); b++) {//+1
+        //evaluation of the delay of the link of the shortest path between i and n
+        for (int b = 0; b < igraph_vector_size(&edges1); b++) {
             int indice = VECTOR(edges1)[b];
             timeMovedtask = timeMovedtask + (vec_delays[indice] / (100 * 100));
-            //            std::cout << "delaybrite " << vec_delays[indice] / (100 * 100) <<std::endl;
         }
-        //        for (int b = 0; b < nedges; b++) {//+1
-        //            std::cout << "delaybrite " << vec_delays[b] / (100 * 100) << std::endl;
-        //        }
+
         igraph_vector_destroy(&edges1);
         igraph_vector_destroy(&vertices1);
     }
-    //std::cout << "timeMovedtask " << timeMovedtask << std::endl;
 
     return timeMovedtask;
 
 }
 
 
-
-
-
-
-
-
-
-
+//=================================================================================
+//= Function that handles the migration of task (idTask) of the mobile node (nodeMob).
+// The current position of the task in the current node's queue is posQueue
+// This task moves from node (from) to node (to) an the time (timeMovedtask)
+// When the task arrives at the new location, it is the last of the queue
+//=================================================================================
 void manage::migrate(double timeMovedtask, int from, int to, int posQueue, int nodeMob, int idTask){
     Event* ev;
-    //std::cout << "migro job  " << idTask << " del nodo mobile  " << nodeMob << std::endl;
     mobile_nodes[nodeMob].setcountMig(idTask);
-    //std::cout << "volte che ha migrato il task  " << idTask << " del nodo mobile  " << nodeMob << " " <<  mobile_nodes[nodeMob].getcountMig(idTask) <<  std::endl;
-
-
-
-    Topology[from].setSizeQueue(Topology[from].getSizeQueue() - 1);
-//    std::cout << " Topology[i].deleteMobileID(posQueue)  " <<  Topology[i].getMobileID(posQueue) << std::endl;
-//    std::cout << " Topology[i].deleteJobID(posQueue)  " <<  Topology[i].getJobID(posQueue) << std::endl;
+    Topology[from].setSizeQueue(Topology[from].getSizeQueue() - 1); //update size of the node's queue. The size decreases by one because the task migrates
 
     Topology[from].deleteMobileID(posQueue);
     Topology[from].deleteJobID(posQueue);
 
-    //std::cout << "cancello l'entry in psizione  " << posQueue << std::endl;
-
-    // std::cout << "timeMovedtask " << timeMovedtask << std::endl;
-    ev = new Event(ARRIVAL, CurrentTime + timeMovedtask, nodeMob, idTask, to);///add mobile node that generated that task
-    //std::cout << "node mob migrate " << nodeMob << std::endl;
-    Lista.addEvent(ev); //add to the list of event this one
+    ev = new Event(ARRIVAL, CurrentTime + timeMovedtask, nodeMob, idTask, to);// the task will arrive at the new node (to) at time CurrentTime + timeMovedtask
+    Lista.addEvent(ev); //this event is added to the list of events
     Topology[to].setFrequency();
 }
 
-
+//=================================================================================
+//= Function that handles the migration of task (idTask) of the mobile node (nodeMob)
+// WITH PRIORITY
+// The current position of the task in the current node's queue is posQueue
+// This task moves from node (from) to node (to) an the time (timeMovedtask)
+// When the task arrives at the new location, it is the first of the queue
+//=================================================================================
 void manage::migratePriority(double timeMovedtask, int from, int to, int posQueue, int nodeMob, int idTask){
     Event* ev;
-    //std::cout << "migro job  " << idTask << " del nodo mobile  " << nodeMob << std::endl;
-    //    std::cout << "id task " << idTask << " è stato generato del nodo " << Topology[i].getMobileID(idTask)  << std::endl;
     mobile_nodes[nodeMob].setcountMig(idTask);
-    //std::cout << "volte che ha migrato il task  " << idTask << " del nodo mobile  " << nodeMob << " " <<  mobile_nodes[nodeMob].getcountMig(idTask) <<  std::endl;
-
-
 
     Topology[from].setSizeQueue(Topology[from].getSizeQueue() - 1);
-//    std::cout << " Topology[from].deleteMobileID(posQueue)  " <<  Topology[from].getMobileID(posQueue) << std::endl;
-//    std::cout << " Topology[from].deleteJobID(posQueue)  " <<  Topology[from].getJobID(posQueue) << std::endl;
 
     Topology[from].deleteMobileID(posQueue);
     Topology[from].deleteJobID(posQueue);
 
-    //std::cout << "cancello l'entry in psizione  " << posQueue << std::endl;
+    ev = new Event(ARRIVAL_PRIORITY, CurrentTime + timeMovedtask, nodeMob, idTask, to);// the task will arrive at the new node (to) at time CurrentTime + timeMovedtask with PRIORITY
 
-    // std::cout << "timeMovedtask " << timeMovedtask << std::endl;
-    ev = new Event(ARRIVAL_PRIORITY, CurrentTime + timeMovedtask, nodeMob, idTask, to);///add mobile node that generated that task
-    //std::cout << "node mob migrate " << nodeMob << std::endl;
     Lista.addEvent(ev); //add to the list of event this one
     Topology[to].setFrequency();
-
-
-
 }
 
-
+//===========================================================================
+//= Function to check if node (from1) and node (to1) are connected
+//===========================================================================
 bool connectionCheck(int from1, int to1){
     int s;
     bool connessi;
@@ -850,23 +718,23 @@ bool connectionCheck(int from1, int to1){
     int lengthPath;
     from = igraph_vss_1(from1);
     to = igraph_vss_1(to1);
-    //igraph_are_connected(&g1, s, nodeIndex, &res);
     igraph_matrix_init(&res, 1, 1);
     //            igraph_matrix_print(&res);
     igraph_is_connected(&g1, &connected, IGRAPH_STRONG);
-    //            std::cout << "grafo connesso : " << connected << std::endl;
     igraph_shortest_paths(&g1, &res, from, to, IGRAPH_ALL);
     if(MATRIX(res,0,0) > 0.5 &&  MATRIX(res,0,0) != IGRAPH_INFINITY) { //if the selected vertex
         // is connected to the failing vertex, the program continues
-        //std::cout << "nodi connessi, distanza : " << MATRIX(res,0,0) << std::endl;
         connessi = 1;
     }else{
         connessi = 0;
     }
-
     return connessi;
 }
 
+
+//================================================================================
+//= Function that evaluates the threshold and check if nodes overcome the threshold
+//================================================================================
 void manage::check_status(int nodeMob, int option, int argc, char** argv){
 
     // std::cout << " check " << std::endl;
@@ -913,7 +781,7 @@ void manage::check_status(int nodeMob, int option, int argc, char** argv){
         if(Topology[i].getSizeQueue() > threshold && Topology[i].getState() == 1) {//threshold){ //move all tasks to other nodes with equal probability
             std::cout << "soglia " << threshold << "\t " << i  << "\t " << Topology[i].getSizeQueue() << "\t" << CurrentTime << std::endl;
 
-            sogliasuperata++;
+            overcomedThreshold++;
             //std::cout << "node " << i << " has " << Topology[i].getSizeQueue() << " tasks" << std::endl;
             int size = Topology[i].getSizeQueue() - 1; // one task is being processed now
             //std::cout << "size " << size << std::endl;
@@ -935,7 +803,7 @@ void manage::check_status(int nodeMob, int option, int argc, char** argv){
             else if(modeOffloading == KSERVERMode){
                 offloading = 2;
             }
-
+  //kserverMODE = 1 -> harmonic on: when a node overcomes the threshold, its tasks migrate to the vertex chosen according to the harmonic policy
 
             switch (offloading) {
                 //case 0 uniformMode: the task of the node that overcomes the thresold is migrated with uniform probability
@@ -945,7 +813,7 @@ void manage::check_status(int nodeMob, int option, int argc, char** argv){
                     for (int x = size; x >= (1); x--) {
                         if (migrationMODE == 1) {
                             //case 0.1 migration cost on: the task of the node that overcomes the threshold migrates only if
-                            // the migration cost of the new nodes is better than the migration cost of the current node
+                            // the migration cost of the new node is better than the migration cost of the current node
                             timeelab = migrationCostUniformON(nvertici, serviceTime,  x,  i,  timeelab);
                         }else if (migrationMODE == 0) {
                             //case 0.0 migration cost off: the task of the node that overcomes the threshold ALWAYS migrates
@@ -1018,7 +886,6 @@ double manage::migrationCostVariableON(int nvertici, std::vector<double> service
 
     else{
         // std::cout << "i nodi non sono connessi quindi non posso migrare" << std::endl;
-        NOconnection++;
         lostTask++;
         int IDmob = Topology[i].getMobileID(x);
         std::cout << "perso " <<  i << "\t" <<   IDmob <<   "\t" <<   Topology[i].getJobID(x) << "\t" << CurrentTime <<std::endl;
@@ -1052,7 +919,6 @@ double manage::migrationCostVariableOFF(int nvertici, std::vector<double> servic
         }
     }
     else{
-        NOconnection++;
         lostTask++;
         int IDmob = Topology[i].getMobileID(x);
         std::cout << "perso " <<  i << "\t" <<   IDmob <<   "\t" <<   Topology[i].getJobID(x) << "\t" << CurrentTime <<std::endl;
@@ -1085,7 +951,6 @@ double manage::migrationCostUniformON(int nvertici, std::vector<double> serviceT
     }
     else{
         //std::cout << "i nodi non sono connessi quindi non posso migrare" << std::endl;
-        NOconnection++;
         lostTask++;
         int IDmob = Topology[i].getMobileID(x);
         std::cout << "perso " <<  i << "\t" <<   IDmob <<   "\t" <<   Topology[i].getJobID(x) << "\t" << CurrentTime <<std::endl;
@@ -1120,7 +985,6 @@ double manage::migrationCostUniformOFF(int nvertici, std::vector<double> service
         }
     }
     else{
-        NOconnection++;
         lostTask++;
         int IDmob = Topology[i].getMobileID(x);
         std::cout << "perso " <<  i << "\t" <<   IDmob <<   "\t" <<   Topology[i].getJobID(x) << "\t" << CurrentTime << std::endl;
@@ -1201,7 +1065,22 @@ void manage::generate(int nodeMob, int option,  int argc, char** argv){
 
     int id = mobile_nodes[nodeMob].getID();
 
-    double AT = exponential(arrivalTime[id]);
+    generationMode = argv[19];
+    const std::string uniformMod = "uniform";
+    const std::string exponentialMod = "exponential";
+    const std::string htMod = "HT";
+    double AT = 0;
+    if(generationMode == exponentialMod){
+        AT = exponential(arrivalTime[id]);
+
+    }
+    else if(generationMode == uniformMod){
+        AT = uniformDistr(arrivalTime[id]);
+
+    }
+    else if(generationMode == htMod){
+        AT = htDistr(arrivalTime[id]);
+    }
 
 
     ev = new Event(GENERATION, CurrentTime + AT, nodeMob, 0, 0);
@@ -1215,6 +1094,12 @@ void manage::generate(int nodeMob, int option,  int argc, char** argv){
 
 int manage::clock_process(int option,  int argc, char** argv) {
     update_node_position();
+    
+    bool FAILED;
+    FAILED = false;
+    if(lostTask >= 1 ){
+        FAILED = true;
+    }
     //    std::cout << "clock 1 " << std::endl;
 
     //    std::cout << "dim lista " << Lista.Size() << std::endl;
@@ -1233,11 +1118,9 @@ int manage::clock_process(int option,  int argc, char** argv) {
     int jobID = ev->jobID;
     //std::cout << "mobNode " << mobNode << "switchID " << switchID << "jobID " << jobID <<std::endl;
 
-
-    //if(totcompletedTask == (dec)*500/(nodeFail+1)){
+//failure 500 task
     if(totcompletedTask == (dec)*500/(nodeFail+1)){
 
-//        std::cout << " cade un nodo, il numero attuale di task è " << totcompletedTask << std::endl;
         ev = new Event(FAILURE, CurrentTime, 0, 0, 0); //10, 0, 0); //event that define the end of the simulation
         Lista.addEvent(ev);
         dec++;
@@ -1284,7 +1167,7 @@ int manage::clock_process(int option,  int argc, char** argv) {
         }
         case FAILURE:
         {
-            if(failureMODE == 1) {
+            if(failureMODE == 1 && failedVertex < nodeFail) {
                 //std::cout << "failure AA" << CurrentTime << std::endl;
                 failure(option, argc, argv);
             }
@@ -1304,14 +1187,14 @@ int manage::clock_process(int option,  int argc, char** argv) {
             //Lista.RemoveEvents();
             //std::cout << "End Simulation" << std::endl;
             //destroyVar();
-            EndOfSimulation = true;
+            FAILED = true;
             break;
 
     }
 
-    //delete ev;
     //return EndOfSimulation;
     return totcompletedTask;
+    //return FAILED;
 }
 
 
@@ -1340,7 +1223,6 @@ double manage::migratekserverFailure(int currentID, int queuePosition, int nodeM
     }
     else{
         //std::cout << "i nodi non sono connessi quindi non posso migrare" << std::endl;
-        NOconnection++;
         lostTask++;
         int IDmob = Topology[currentID].getMobileID(queuePosition);
         std::cout << "perso " <<  currentID << "\t" <<   IDmob <<   "\t" <<   Topology[currentID].getJobID(queuePosition) << "\t" << CurrentTime <<std::endl;
@@ -1524,11 +1406,6 @@ void manage::arrivePriority(int nodeMob, int jobID, int n, int option, int argc,
 }
 
 
-void manage::destroyVar() {
-    delete [] mobile_nodes;
-    delete coord_mobile_nodes;
-
-}
 
 
 //igraph_real_t<int, 5> weightsFunction(std::vector<double> vec_delays, int nedges){
@@ -1551,6 +1428,9 @@ void manage::failure( int option, int argc, char** argv) {
     const std::string uniformMode = "uniform";
     const std::string variableMode = "variable";
     const std::string KSERVERMode = "kserver";
+    
+    Event *ev;
+
 
     int n;
     int failurenodeId;
@@ -1626,7 +1506,7 @@ void manage::failure( int option, int argc, char** argv) {
                         s = distribution(generator);
                     }
                 }
-                    //if KSERVERMode, the vertex where the tasks migrate to is chosen according kserver AGGIUSTA!!!!!!
+                    //if KSERVERMode, the vertex where the tasks migrate to is chosen according to kserver policy
                 else if (modeOffloading == KSERVERMode) {
                     if(Topology[failurenodeId].getSizeNeighbours() > 1) {
                         s = kserverIDgen(failurenodeId, nvertici, serviceTime, timeelab);
@@ -1728,6 +1608,11 @@ void manage::failure( int option, int argc, char** argv) {
             }
         }
     }
+    //new version FAILURE nodes
+//    double AT = exponential(1);
+//    
+//    ev = new Event(FAILURE, CurrentTime + AT, 0, 0, 0); //10, 0, 0); //event that define the end of the simulation
+//    Lista.addEvent(ev);
 
 }
 
@@ -1782,8 +1667,7 @@ void manage::statistics(){
     std::cout << "lost tasks " << lostTask << std::endl;
     std::cout << "migrated tasks " << migration << std::endl;
     std::cout << "NOmigrated tasks " << NOmigration << std::endl;
-    std::cout << "NOconnected tasks " << NOconnection << std::endl;
-    std::cout << "numero volte soglia superata " <<sogliasuperata << std::endl;
+    std::cout << "numero volte soglia superata " <<overcomedThreshold << std::endl;
 
     std::cout << "soglia media " << sogliaMedia << std::endl;
 
