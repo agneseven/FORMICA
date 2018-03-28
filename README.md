@@ -1,4 +1,4 @@
-# ForMiCa: Foraging and Migration Cyber Architecture
+# ForMiCA: Foraging and Migration Cyber Architecture
 ## Installation
 ### 1. Prerequisites
 * [igraph](http://igraph.org/c/)
