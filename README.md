@@ -25,7 +25,7 @@ where:
 
 **\<PATH_TO_NODE_DELAY_TEXT_FILE\>** : path to the text file generated with BRITE containing the delay of eack link
 
-**\<SIM_TIME\>** : maximum duration of the simulation
+**\<SIM_TIME\>** : maximum duration of the simulation (seconds)
 
 **\<MOBILE_NUM\>** : number of mobile device that generate tasks
 
@@ -41,15 +41,19 @@ where:
 
 **\<SPEED_MOBILE_NODE\>** : mobile node speed across the topology
 
-**\<SEED\>** : random number used for user placement
+**\<SEED\>** : random number used for user placement (km/h)
 
 **\<MIGRATION_MODE: _0_ | _1_\>** : 0 -> migration cost off: when a node overcomes the threshold, its tasks ALWAYS migrate; 1 -> migration cost on: when a node overcomes the threshold, its tasks migrate only if the migration cost of the new node is better than the migration cost of the current node
 
 **\<FAILURE_MODE: _0_ | _1_\>** : 0 -> failure off: nodes never fail; 1 -> failure on: some random nodes can fail
 
-**\<PERC_FAILED_NODES\>** : percentage of nodes that will fail
+**\<PERC_FAILED_NODES\>** : percentage of nodes that will fail. This variable is considered only if <FAILURE_MODE> == 1
 
 **\<THRESHOLD_MODE: _0_ | _1_\>** : 0 -> tasks never migrate; 1 -> tasks migrate when the threshold is overcome
 
 **\<GENERATION_TRAFFIC_MODE: _uniform_ | _exponential_ | _HT_\>** : uniform -> mobile nodes generate traffic according to a uniform distribution; exponential -> mobile nodes generate traffic according to an exponential distribution; HT -> mobile nodes generate traffic according to an exponential distribution (gamma)
+
+> *Example*
+> 
+> ./test 10 ./coord\_nodi\_10\_1.txt ./idnodi\_10\_1.txt ./bandwidth\_10\_1.txt ./delay\_25\_1.txt 1000 5 uniform uniform 3 3 uniform 3 0 1 50 1 exponential
 
