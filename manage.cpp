@@ -47,8 +47,6 @@ std::default_random_engine generator(time(NULL));
 double exponential(double x)
 {
     double z; // Uniform random number from 0 to 1
-    
-    
     // Pull a uniform RV (0 < z < 1)
     do
     {
@@ -250,7 +248,9 @@ int manage::initialize_process(int argc, char** argv) {
     Event *ev;
     char* modeTs;
     char* modeTd;
+    int option;
     
+    double Border1 = 1000.0; //dimension of the plane
     totGeneratedEvent = 0;
     failedVertex = 0;
     migration = 0;
@@ -261,13 +261,11 @@ int manage::initialize_process(int argc, char** argv) {
     overcomedThreshold = 0;
     CurrentTime = 0.0;
 
-    double Border1 = 1000.0; //dimension of the plane
     
 
 
     //----------------------------------------------------------------------------
     
-    int option;
 
     simulationTime = atof(argv[6]); //total duration of the simulation
     numMob = atoi(argv[7]); //number of mobile devices that generate packets
@@ -427,7 +425,7 @@ int manage::initialize_process(int argc, char** argv) {
         THRESHOLD = 1; //tasks migrate when they overcome the threshold (method currently implemented)
     }
     else if(THRESHOLDMode == 2){
-        THRESHOLD = 2; //tasks migrate according to the DAM protocol (new method that has to be implemented)
+        THRESHOLD = 2; //tasks migrate according to the MWF policy (new method that has to be implemented)
     }
 
     if(migrationMode == 0) {
@@ -490,9 +488,9 @@ int manage::initialize_process(int argc, char** argv) {
 //===========================================================================
 int manage::initialize_graph(int argc, char** argv){
     
-    double id_node[nvertici],x_pos[nvertici], y_pos[nvertici];
     nvertici = atoi(argv[1]); //total number of vertices
-    
+    double id_node[nvertici],x_pos[nvertici], y_pos[nvertici];
+
     for(int i = 0; i< nvertici; i++) {
         for(int j = 0; j < nvertici; j++){
             Topology[i].initNeighbours();
@@ -515,7 +513,7 @@ int manage::initialize_graph(int argc, char** argv){
     {
         for (int i = 0 ; i<nvertici; i ++){
             file_coord >> id_node[i] >> x_pos[i] >> y_pos[i];
-            //std::cout << id_node[i] << " " << x_pos[i] << " " << y_pos[i] << std::endl;
+            std::cout << id_node[i] << " " << x_pos[i] << " " << y_pos[i] << std::endl;
         }
     }
 
@@ -604,32 +602,35 @@ void manage::update_node_position(){
 //= Function to evaluate the delay from node i to node n
 //===========================================================================
 double manage::delayCalculation(int i, int n ){
+    //std::cout << "error delayCalculation()" << std::endl;
     double timeMovedtask = 0.0;
 
     igraph_matrix_t res;
     igraph_bool_t connected;
     igraph_vs_t from;
     igraph_vs_t to;
-    std::vector<igraph_real_t> weights_delay; //vector of the delay of all the links of the topology
-    igraph_vector_t vertices1;
-    igraph_vector_t edges1;
-    igraph_vector_init(&vertices1, 0);
-    igraph_vector_init(&edges1, 0);
     
     from = igraph_vss_1(i);
     to = igraph_vss_1(n);
+    
+    std::cout << "i: " << i << " n: " << n << std::endl;
+    std::cout << "vertices: " << igraph_vcount(&g1) << " edges: " << igraph_ecount(&g1) << std::endl;
 
     igraph_matrix_init(&res, 0, 0);
     igraph_matrix_print(&res);
     igraph_is_connected(&g1, &connected, IGRAPH_STRONG);
+    std::cout << connected << std::endl;
+
     igraph_shortest_paths(&g1, &res, from, to, IGRAPH_ALL);
+    std::cout << "qui" << std::endl;
 
     if(MATRIX(res,0,0) == INFINITY ){
-        //        std::cout << "the two nodes i and n are not connected " << std::endl;
+                std::cout << "the two nodes i and n are not connected " << std::endl;
         timeMovedtask = 10000;
     }
     if(MATRIX(res,0,0) > 0.5 && MATRIX(res,0,0) != INFINITY) {
-        //        std::cout << " the two nodes i and n are connected, then tasks can migrate " << std::endl;
+                std::cout << " the two nodes i and n are connected, then tasks can migrate " << std::endl;
+        std::vector<igraph_real_t> weights_delay; //vector of the delay of all the links of the topology
 
         //vector of the delay of all the links of the topolog
         for (int i = 0; i < nedges; i++) {
@@ -645,6 +646,10 @@ double manage::delayCalculation(int i, int n ){
             weights_delay2[i] = weights_delay[i];
 
         }
+        igraph_vector_t vertices1;
+        igraph_vector_t edges1;
+        igraph_vector_init(&vertices1, 0);
+        igraph_vector_init(&edges1, 0);
 
         igraph_vector_view(&weights, weights_delay2, sizeof(weights_delay2) / sizeof(igraph_real_t));
 
@@ -673,6 +678,8 @@ double manage::delayCalculation(int i, int n ){
 // When the task arrives at the new location, it is the last of the queue
 //=================================================================================
 void manage::migrate(double timeMovedtask, int from, int to, int posQueue, int nodeMob, int idTask){
+    //std::cout << "error migrate()" << std::endl;
+
     Event* ev;
     mobile_nodes[nodeMob].setcountMig(idTask);
     Topology[from].setSizeQueue(Topology[from].getSizeQueue() - 1); //update size of the node's queue. The size decreases by one because the task migrates
@@ -693,6 +700,8 @@ void manage::migrate(double timeMovedtask, int from, int to, int posQueue, int n
 // When the task arrives at the new location, it is the first of the queue
 //=================================================================================
 void manage::migratePriority(double timeMovedtask, int from, int to, int posQueue, int nodeMob, int idTask){
+    //std::cout << "error migratePriority()" << std::endl;
+
     Event* ev;
     mobile_nodes[nodeMob].setcountMig(idTask);
 
@@ -711,6 +720,7 @@ void manage::migratePriority(double timeMovedtask, int from, int to, int posQueu
 //= Function to check if node (from1) and node (to1) are connected
 //===========================================================================
 bool connectionCheck(int from1, int to1){
+    //std::cout << "error connectionCheck()" << std::endl;
     int s;
     bool connessi;
     igraph_matrix_t res;
@@ -739,6 +749,7 @@ bool connectionCheck(int from1, int to1){
 //= Function that evaluates the threshold and check if nodes overcome the threshold
 //=================================================================================
 void manage::check_status(int nodeMob, int option, int argc, char** argv){
+    //std::cout << "error check_status()" << std::endl;
 
     // std::cout << " check " << std::endl;
     double threshold;
@@ -789,6 +800,8 @@ void manage::check_status(int nodeMob, int option, int argc, char** argv){
             else if(modeOffloading == KSERVERMode){
                 offloading = 2;
             }
+            
+            std::cout << "offloading mode " << modeOffloading  << std::endl;
   //kserverMODE = 1 -> harmonic on: when a node overcomes the threshold, its tasks migrate to the vertex chosen according to the harmonic policy
 
             switch (offloading) {
@@ -864,6 +877,8 @@ void manage::check_status(int nodeMob, int option, int argc, char** argv){
 //2) returns the elaboration time taken by the node to elaborate the task
 //============================================================================================
 double manage::migrationCostVariableON(int nvertici, std::vector<double> serviceTime, int x, int i, double timeelab) {
+    ////std::cout << "error migrationCostVariableON()" << std::endl;
+
     int n;
     if (Topology[i].getSizeNeighbours() > 1) {
         n = preferentialIDgen(i, nvertici, serviceTime);
@@ -903,6 +918,7 @@ double manage::migrationCostVariableON(int nvertici, std::vector<double> service
 //2) returns the elaboration time taken by the node to elaborate the task
 //============================================================================================
 double manage::migrationCostVariableOFF(int nvertici, std::vector<double> serviceTime, int x, int i, double timeelab) {
+    //std::cout << "error migrationCostVariableOFF()" << std::endl;
     int n;
     if(Topology[i].getSizeNeighbours() > 1) {
         n = preferentialIDgen(i, nvertici, serviceTime);
@@ -942,6 +958,7 @@ double manage::migrationCostVariableOFF(int nvertici, std::vector<double> servic
 //2) returns the elaboration time taken by the node to elaborate the task
 //===========================================================================================
 double manage::migrationCostUniformON(int nvertici, std::vector<double> serviceTime, int x, int i, double timeelab) {
+    std::cout << "error migrationCostUniformON()" << std::endl;
     int n;
     bool connessi;
     int prove = 0;
@@ -983,6 +1000,7 @@ double manage::migrationCostUniformON(int nvertici, std::vector<double> serviceT
 //2) returns the elaboration time taken by the node to elaborate the task
 //===========================================================================================
 double manage::migrationCostUniformOFF(int nvertici, std::vector<double> serviceTime, int x, int i, double timeelab) {
+    std::cout << "error migrationCostUniformOFF()" << std::endl;
     int n;
     std::uniform_int_distribution<int> distribution(0,nvertici-1);
     if(Topology[i].getSizeNeighbours() > 1) {
@@ -1016,6 +1034,8 @@ double manage::migrationCostUniformOFF(int nvertici, std::vector<double> service
 //= Function that evaluate the migration cost
 //=================================================================================
 double manage::manageMigrationCost(std::vector<double> serviceTime, double transmissionCost_new, int x, double timeelab, int n, int i){
+    std::cout << "error manageMigrationCost()" << std::endl;
+
 
     double queueCost_new = serviceTime[n]/2 * Topology[n].getInstantQueueSize();
     double elaborationTime_new = timeelab;
@@ -1044,6 +1064,7 @@ double manage::manageMigrationCost(std::vector<double> serviceTime, double trans
 //=================================================================================
 void manage::generate(int nodeMob, int option,  int argc, char** argv){
     //std::cout << "generate " << nodeMob << "\t" << CurrentTime << std::endl;
+    std::cout << "error generate()" << std::endl;
     Event *ev;
 
     Coordinates *coord_mobile_nodes2;
@@ -1093,6 +1114,8 @@ void manage::generate(int nodeMob, int option,  int argc, char** argv){
 //FAILURE, CHECK(threshold), SIM_END
 //====================================================================================
 int manage::clock_process(int option,  int argc, char** argv) {
+    //std::cout << "error clock_process()" << std::endl;
+
     update_node_position();
     
     bool FAILED;
@@ -1122,7 +1145,8 @@ int manage::clock_process(int option,  int argc, char** argv) {
         {
             totGeneratedEvent++;
             generate(mobNode, option, argc, argv);
-            break;}
+            break;
+        }
         case DEPARTURE:
         {
             depart(mobNode, jobID, option, argc, argv);
@@ -1132,9 +1156,9 @@ int manage::clock_process(int option,  int argc, char** argv) {
         {
             if(Topology[switchID].getState() == 1){
                 arrive(mobNode, jobID, switchID, option, argc, argv);
-            }else if(Topology[switchID].getState() == 0)
-            {
-            }
+            }//else if(Topology[switchID].getState() == 0)
+            //{
+            //}
             break;
 
         }
@@ -1156,8 +1180,8 @@ int manage::clock_process(int option,  int argc, char** argv) {
             if(THRESHOLD == 1) {
                 check_status(mobNode, option, argc, argv);
             }
-            if(THRESHOLD == 2) {
-                check_statusDAM(); //function to implement
+            else if(THRESHOLD == 2) {
+                check_statusMWF(); //function to implement
             }
             break;
         }
@@ -1188,6 +1212,7 @@ int manage::clock_process(int option,  int argc, char** argv) {
 //gets lost
 //=================================================================================
 double manage::migratekserverFailure(int currentID, int queuePosition, int nodeMob, double timeelab){
+    std::cout << "error migratekserverFailure()" << std::endl;
 
     int n;
     if(Topology[currentID].getSizeNeighbours() > 1) {
@@ -1223,6 +1248,7 @@ double manage::migratekserverFailure(int currentID, int queuePosition, int nodeM
 //the system.
 //====================================================================================
 void manage::depart(int nodeMob, int jobID, int option, int argc, char** argv){
+    //std::cout << "error depart()" << std::endl;
 
     Event *ev;
     for (int i =0; i< nvertici; i++) {
@@ -1263,6 +1289,8 @@ void manage::depart(int nodeMob, int jobID, int option, int argc, char** argv){
 //the task is put at the end of the queue. So, it will be the last to be served
 //====================================================================================
 void manage::arrive(int nodeMob, int jobID, int n, int option, int argc, char** argv){
+    std::cout << "error arrive()" << std::endl;
+
     std::cout << "arrive " << n << " \t" << nodeMob << "\t " << jobID << "\t" << CurrentTime << std::endl;
     Topology[n].setarriveTime(CurrentTime);
     Event *ev;
@@ -1297,6 +1325,8 @@ void manage::arrive(int nodeMob, int jobID, int n, int option, int argc, char** 
 //the task is put after the last job insert with priority.
 //====================================================================================
 void manage::arrivePriority(int nodeMob, int jobID, int n, int option, int argc, char** argv){
+    std::cout << "error arrivePriority()" << std::endl;
+
 
 
     Topology[n].setarriveTime(CurrentTime);
@@ -1327,8 +1357,7 @@ void manage::arrivePriority(int nodeMob, int jobID, int n, int option, int argc,
 
     Topology[n].setMobileIDPriority(nodeMob, jobPriority);
     Topology[n].setJobIDPriority(jobID, jobPriority);
-    //
-    setto anche a questo job la priority settando 1 nella nuova posizione introdotta jobPriority
+    //setto anche a questo job la priority settando 1 nella nuova posizione introdotta jobPriority
     Topology[n].setStateJob(jobPriority);
 
 
@@ -1348,9 +1377,6 @@ void manage::arrivePriority(int nodeMob, int jobID, int n, int option, int argc,
        // check_status(0, option, argc, argv);
 //    }
 
-
-
-
 }
 
 
@@ -1362,6 +1388,8 @@ void manage::destroyGraph(){
 //= Function that manages the failure of nodes
 //====================================================================================
 void manage::failure( int option, int argc, char** argv) {
+    std::cout << "error failure()" << std::endl;
+
     //the id of the node that will fail is RANDOMLY chosen among the nodes that are still active
     const std::string uniformMode = "uniform";
     const std::string variableMode = "variable";
@@ -1605,8 +1633,8 @@ void manage::statistics(){
 }
 
 //===========================================================================
-//= New function that implements DAM protocol
+//= New function that implements MWF policy
 //===========================================================================
-void manage::check_statusDAM()
+void manage::check_statusMWF()
 {
 }
