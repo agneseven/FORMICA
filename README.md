@@ -55,5 +55,5 @@ where:
 
 > *Example*
 > 
-> ./test 10 ./coord\_nodi\_10\_1.txt ./idnodi\_10\_1.txt ./bandwidth\_10\_1.txt ./delay\_10\_1.txt 1000 5 uniform uniform 4 4 uniform 3 100 0 1 50 1 exponential
+> ./test 10 ./coordinates_10_1.txt ./edges_10_1.txt ./bandwidth_10_1.txt ./delay_10_1.txt 1000 5 uniform uniform 3 3 uniform 3 100 0 1 50 0 exponential
 
