@@ -57,7 +57,7 @@ where:
 > 
 > ./test 10 ./coordinates_10_1.txt ./edges_10_1.txt ./bandwidth_10_1.txt ./delay_10_1.txt 1000 5 uniform uniform 3 3 uniform 3 100 0 1 50 0 exponential
 
-### 4. Citation
+## Citation
 If you use this code, please cite our paper:
 ```
 inproceedings { ventrella2018load,
@@ -72,7 +72,7 @@ inproceedings { ventrella2018load,
 ```
 Agnese V Ventrella, Flavio Esposito, and L. Alfredo Grieco," Load Profiling and Migration for Effective Cyber Foraging in Disaster Scenarios with FORMICA", Proc. of 4th IEEE International Conference on Network Softwarization (NetSoft 2018), Montreal, Canada, Jun., 2018.
 
-#### Abstract
+## Abstract
 Cyber foraging techniques have been proposed in edge computing to support resource-intensive and latency-sensitive mobile applications.  In a natural or man-made disaster scenario, all cyber foraging challenges are exacerbated by two problems: edge nodes are scarce and hence easily overloaded and failures are common due to the ad-hoc hostile conditions.
 
 In this paper, we study the use of efficient load profiling and migration strategies to mitigate such problems. In particular, we propose FORMICA, an architecture for cyber foraging orchestration, whose goal is to minimize the completion time of a set of  jobs offloaded from mobile devices. Existing service offloading solutions are mainly concerned with outsourcing a job out of the mobile responsibility.  Our architecture supports both mobile-based offloading and backend-driven onloading $i.e.$, the offloading decision is taken by the edge infrastructure and not by the mobile node. FORMICA leverages Gelenbe networks to estimate the load profile of each node of the edge computing infrastructure to make proactive load profiling decisions.
