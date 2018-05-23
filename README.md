@@ -41,7 +41,7 @@ where:
 
 **\<SPEED_MOBILE_NODE\>** : mobile node speed across the topology
 
-**\<SEED\>** : random number used for user placement (km/h)
+**\<SEED\>** : random number used for user placement
 
 **\<MIGRATION_MODE: _0_ | _1_\>** : 0 -> migration cost off: when a node overcomes the threshold, its tasks ALWAYS migrate; 1 -> migration cost on: when a node overcomes the threshold, its tasks migrate only if the migration cost of the new node is better than the migration cost of the current node
 
